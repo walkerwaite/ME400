@@ -49,11 +49,15 @@ def epoch(loader, model, opt=None):
         total_loss += loss.item() * X.shape[0]
     return total_err / len(loader.dataset), total_loss / len(loader.dataset)
 
-# Train the model
+# Initialize optimizer and learning rate scheduler
 opt = optim.SGD(model_cnn.parameters(), lr=1e-1)
-for epoch_num in range(10):
+scheduler = optim.lr_scheduler.StepLR(opt, step_size=5, gamma=0.1)
+
+# Train the model
+for epoch_num in range(10):  # Increase the number of epochs to allow the scheduler to take effect
     train_err, train_loss = epoch(train_loader, model_cnn, opt)
     test_err, test_loss = epoch(test_loader, model_cnn)
+    scheduler.step()
     print(f"Epoch {epoch_num+1}: Train Accuracy: {100 - 100*train_err:.2f}%, Test Accuracy: {100 - 100*test_err:.2f}%")
 
 # Save the trained model
