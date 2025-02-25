@@ -1,0 +1,57 @@
+import cvxpy as cp
+import numpy as np
+import torch
+import time
+
+def check_sep(X1, X2):
+    A = np.array(X1)
+    A = np.reshape(A, (A.shape[0], -1)).T
+
+    num_X1 = X1.shape[0]
+    one_vec = np.ones(num_X1)
+
+    B = np.array(X2)
+    B = np.reshape(B, (B.shape[0], -1))
+
+    total_time = 0
+    all_inf = True
+
+    for y in B:
+        start_time = time.time()
+        lam = cp.Variable(num_X1)
+        obj = cp.Minimize(1)
+        const = [lam >= 0, one_vec @ lam == 1, A @ lam == y]
+        prob = cp.Problem(obj, const)
+        result = prob.solve(solver="SCS")
+        end_time = time.time()
+
+        total_time += (end_time - start_time)
+        print("Lambda values:", lam.value)
+        print("Objective value:", result)
+
+        if result != float('inf'):
+            all_inf = False
+
+    avg_time = total_time / len(B)
+    print(f"Average time per data point: {avg_time:.4f} seconds")
+
+    if all_inf:
+        print("Separable")
+    else:
+        print("Not separable :(")
+
+if __name__ == "__main__":
+    X_robust = torch.load("X_robust.pt")
+    X_nonrobust = torch.load("X_nonrobust.pt")
+
+    # Concatenate and shuffle
+    X_combined = np.concatenate((X_robust, X_nonrobust), axis=0)
+    np.random.shuffle(X_combined)
+
+    # Split into two sets
+    split_index = X_combined.shape[0] // 2
+    X1_shuffled = X_combined[:split_index]
+    X2_shuffled = X_combined[split_index:]
+
+    # Run the separability test
+    check_sep(X1_shuffled, X2_shuffled)
